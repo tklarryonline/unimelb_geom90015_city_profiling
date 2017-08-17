@@ -1,1 +1,2 @@
-# unimelb_geom90015_city_profiling
+# UniMelb GEOM90015 - Spatial Data Infrastructure
+## City Profiling with R
