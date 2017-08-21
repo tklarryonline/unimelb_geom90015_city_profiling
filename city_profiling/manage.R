@@ -39,5 +39,17 @@ library(doParallel)
 library(igraph)
 
 # Set number of cores
-constants.CORES = 1
-registerDoParallel(cores = constants.CORES)
+CORES <- 1
+registerDoParallel(cores = CORES)
+
+# Reads env variables
+GEOSERVER_CREDENTIALS <- list(
+  URL = Sys.env("GEOSERVER_URL"),
+  USERNAME = Sys.env("GEOSERVER_USERNAME"),
+  PASSWORD = Sys.env("GEOSERVER_PASSWORD"),
+  WORKSPACE = Sys.env("GEOSERVER_WORKSPACE"),
+  DATASTORE = Sys.env("GEOSERVER_DATASTORE")
+)
+
+TEMP_DIR <- file.path(getwd(), "tempdata")
+EXPORTS_DIR <- file.path(getwd(), "exports")
