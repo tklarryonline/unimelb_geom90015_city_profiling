@@ -102,10 +102,10 @@ utils.debugprint <- function(arg1){
 #' @export
 #'
 #' @examples
-utils.loadGeoJSON2SP <- function(url){
+utils.loadGeoJSON2SP <- function(url) {
 
   # create a unique temp file name for geojson
-  tmpFilePath = sprintf("%s\\%s.geojson", globalGSCredentials$tempDirPath, UUIDgenerate(FALSE))
+  tmpFilePath <- file.path(globalGSCredentials$tempDirPath, sprintf("%s.geojson", UUIDgenerate(FALSE)))
 
   # if tempDirPath not existed, create
   if(dir.exists(globalGSCredentials$tempDirPath)==FALSE){
@@ -127,7 +127,7 @@ utils.loadGeoJSON2SP <- function(url){
       readOGR(tmpFilePath, "OGRGeoJSON")
     },
     error=function(cond) {
-      utils.debugprint(sprintf(cond))
+      utils.debugprint(cond)
       return(NULL)
     },
     finally={
