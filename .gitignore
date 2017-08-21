@@ -1,2 +1,6 @@
 *.Rproj*
 .Rhistory
+city_profiling/exports/*
+city_profiling/tempdata/*
+
+*.csv
