@@ -32,6 +32,7 @@ for (package in constants.REQUIRE_PACKAGES) {
 
 # Loads the file from Dr. Ben
 source(file.path(getwd(), "utils", "rgs_utils.R"))
+source(file.path(getwd(), "utils", "custom_utils.R"))
 
 # Loads left packages
 library(doParallel)
