@@ -4,7 +4,7 @@
 # The purpose of this file is to install/init all the required packages
 # And source the correct util files
 
-constants.REQUIRE_PACKAGES <- c(
+REQUIRE_PACKAGES <- c(
   # Required ones for Dr. Ben's utils work
   "maptools",
   "rgdal",
@@ -20,14 +20,14 @@ constants.REQUIRE_PACKAGES <- c(
   "igraph"
 )
 
-utils.install.package <- function(package) {
+install_package <- function(package) {
   if (!require(package)) {
     install.packages(package)
   }
 }
 
-for (package in constants.REQUIRE_PACKAGES) {
-  utils.install.package(package)
+for (package in REQUIRE_PACKAGES) {
+  install_package(package)
 }
 
 # Loads the file from Dr. Ben
