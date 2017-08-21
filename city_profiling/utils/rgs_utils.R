@@ -62,15 +62,15 @@ library(jsonlite)
 library(XML)
 
 # this variable contains all credentials for accessing a geoserver instance to publish data layers and create styles
-globalGSCredentials = list()
+globalGSCredentials <- list()
 
-globalGSCredentials["gsRESTURL"] = "http://115.146.93.93:8080/geoserver" #change it to your own geoserver url
-globalGSCredentials["gsRESTUSER"] = "admin" #change it to your own geoserver username (admin role required)
-globalGSCredentials["gsRESTPW"] = "sdiTestbed2017" #change it to your own password
-globalGSCredentials["gsWORKSPACENAME"] = "a2z_ws_unique_student_id" #change it to your own unique workspace name, a new workspace will be automatically created if it does not exist
-globalGSCredentials["gsDATASTORESNAME"] = "a2z_ds_unique_student_id" #change it to your own unique datastore name, a new datastore will be automatically created if it does not exist
-globalGSCredentials["tempDirPath"] = sprintf("%s/%s",getwd(),"tempdata")
-globalGSCredentials["wfsUrlTemplate"] = "%s/wfs?service=wfs&version=1.0.0&request=GetFeature&typeName=%s:%s&outputFormat=json" #DON'T MODIFY THIS LINE
+globalGSCredentials["gsRESTURL"] <- Sys.env("GEOSERVER_URL")
+globalGSCredentials["gsRESTUSER"] <- Sys.env("GEOSERVER_USERNAME")
+globalGSCredentials["gsRESTPW"] <- Sys.env("GEOSERVER_PASSWORD")
+globalGSCredentials["gsWORKSPACENAME"] <- Sys.env("GEOSERVER_WORKSPACE")
+globalGSCredentials["gsDATASTORESNAME"] <- Sys.env("GEOSERVER_DATASTORE")
+globalGSCredentials["tempDirPath"] <- file.path(getwd(), "tempdata")
+globalGSCredentials["wfsUrlTemplate"] <- "%s/wfs?service=wfs&version=1.0.0&request=GetFeature&typeName=%s:%s&outputFormat=json" #DON'T MODIFY THIS LINE
 
 
 WMSStyleCreateUrl = "http://apps.csdila.ie.unimelb.edu.au/gs-styling-service/styling/wms/create" #DON'T MODIFY THIS LINE
@@ -190,7 +190,7 @@ utils.publishSP2GeoServer <- function(spobj){
 
   # save spobj as shp file
   tmpFileName = UUIDgenerate(FALSE)
-  tmpFilePath = sprintf("%s\\%s", globalGSCredentials$tempDirPath, tmpFileName)
+  tmpFilePath = file.path(globalGSCredentials$tempDirPath, tmpFileName)
   dir.create(tmpFilePath, showWarnings=FALSE, recursive=TRUE)
   writeOGR(spobj, dsn=tmpFilePath, layer = tmpFileName,  driver="ESRI Shapefile", check_exists=TRUE, overwrite_layer=TRUE)
 
@@ -388,10 +388,10 @@ utils.publishSP2GeoServerWithMultiStyles <- function(spobj,
     palettename=palettename_vec[i]
     colorreverseorder=colorreverseorder_vec[i]
     colornum=colornum_vec[i]
-    classifier=classifier_vec[i]
+    classifier <- classifier_vec[i]
 
     # calculte wms style
-    wmsStyleResult = fromJSON(utils.createWMSStyle(wfsurl=outputWfsUrl,
+    wmsStyleResult <- fromJSON(utils.createWMSStyle(wfsurl=outputWfsUrl,
                                                    attrname=attrname,
                                                    palettename=palettename,
                                                    colorreverseorder=colorreverseorder,
@@ -433,26 +433,31 @@ utils.createFeatureType <- function(filename){
 
   # publish uploaded datalayer
   h <- basicTextGatherer()
-  url <- sprintf('%s/rest/workspaces/%s/datastores/%s/featuretypes.xml'
-                 ,globalGSCredentials$gsRESTURL
-                 ,globalGSCredentials$gsWORKSPACENAME
-                 ,globalGSCredentials$gsDATASTORESNAME
-                 )
+  url <- sprintf(
+    '%s/rest/workspaces/%s/datastores/%s/featuretypes.xml',
+    globalGSCredentials$gsRESTURL,
+    globalGSCredentials$gsWORKSPACENAME,
+    globalGSCredentials$gsDATASTORESNAME
+  )
 
-  body <- sprintf('<featureType><enabled>true</enabled><metadata /><keywords /><metadataLinks /><attributes /><name>%s</name><title>%s</title><srs>EPSG:4326</srs><projectionPolicy>FORCE_DECLARED</projectionPolicy></featureType>'
-                  ,filename
-                  ,filename)
+  body <- sprintf(
+    '<featureType><enabled>true</enabled><metadata /><keywords /><metadataLinks /><attributes /><name>%s</name><title>%s</title><srs>EPSG:4326</srs><projectionPolicy>FORCE_DECLARED</projectionPolicy></featureType>',
+    filename,
+    filename
+  )
 
   # add a new featuretype by sending a POST request
-  curlPerform(url = url
-              ,httpheader=c(Accept="text/xml", 'Content-Type'="text/xml")
-              ,username = globalGSCredentials$gsRESTUSER
-              ,password = globalGSCredentials$gsRESTPW
-              ,httpauth=AUTH_BASIC
-              ,post=1
-              ,postfields=body
-              ,writefunction = h$update
-              ,verbose = TRUE)
+  curlPerform(
+    url = url,
+    httpheader=c(Accept="text/xml", 'Content-Type'="text/xml"),
+    username = globalGSCredentials$gsRESTUSER,
+    password = globalGSCredentials$gsRESTPW,
+    httpauth=AUTH_BASIC,
+    post=1,
+    postfields=body,
+    writefunction = h$update,
+    verbose = TRUE
+  )
 
   #utils.debugprint(sprintf("utils.createFeatureType output: %s",h$value()))
 
@@ -481,19 +486,21 @@ utils.createWorkspace <- function(wsname){
   # otherwise, create a new workspace
   h <- basicTextGatherer()
 
-  url <- sprintf('%s/rest/workspaces' ,globalGSCredentials$gsRESTURL)
+  url <- sprintf('%s/rest/workspaces', globalGSCredentials$gsRESTURL)
 
   body <- sprintf('<workspace><name>%s</name></workspace>', wsname)
 
-  curlPerform(url = url
-              ,httpheader=c(Accept="text/xml", 'Content-Type'="text/xml")
-              ,username = globalGSCredentials$gsRESTUSER
-              ,password = globalGSCredentials$gsRESTPW
-              ,httpauth=AUTH_BASIC
-              ,post=1
-              ,postfields=body
-              ,writefunction = h$update
-              ,verbose = TRUE)
+  curlPerform(
+    url = url,
+    httpheader=c(Accept="text/xml", 'Content-Type'="text/xml"),
+    username = globalGSCredentials$gsRESTUSER,
+    password = globalGSCredentials$gsRESTPW,
+    httpauth=AUTH_BASIC,
+    post=1,
+    postfields=body,
+    writefunction = h$update,
+    verbose = TRUE
+  )
   utils.debugprint(sprintf("workspace: %s created",wsname))
   return(h$value())
 }
@@ -513,13 +520,15 @@ utils.getWorkspace <- function(){
 
   url <- sprintf('%s/rest/workspaces' ,globalGSCredentials$gsRESTURL)
 
-  curlPerform(url = url
-              ,httpheader=c(Accept="text/xml", 'Content-Type'="text/xml")
-              ,username = globalGSCredentials$gsRESTUSER
-              ,password = globalGSCredentials$gsRESTPW
-              ,httpauth=AUTH_BASIC
-              ,writefunction = h$update
-              ,verbose = TRUE)
+  curlPerform(
+    url = url,
+    httpheader=c(Accept="text/xml", 'Content-Type'="text/xml"),
+    username = globalGSCredentials$gsRESTUSER,
+    password = globalGSCredentials$gsRESTPW,
+    httpauth=AUTH_BASIC,
+    writefunction = h$update,
+    verbose = TRUE
+  )
 
   return(h$value())
 }
@@ -540,27 +549,30 @@ utils.addShp2DataStore <- function(filepath){
   #ref: https://github.com/omegahat/RCurl/issues/18
 
   h <- basicTextGatherer()
-  url <- sprintf('%s/rest/workspaces/%s/datastores/%s/file.shp'
-                 ,globalGSCredentials$gsRESTURL
-                 ,globalGSCredentials$gsWORKSPACENAME
-                 ,globalGSCredentials$gsDATASTORESNAME
-                )
+  url <- sprintf(
+    '%s/rest/workspaces/%s/datastores/%s/file.shp',
+    globalGSCredentials$gsRESTURL,
+    globalGSCredentials$gsWORKSPACENAME,
+    globalGSCredentials$gsDATASTORESNAME
+  )
 
   content.type <- guessMIMEType(filepath, "application/zip")
 
   # upload shpfile by sending a PUT request
-  res <- ftpUpload(what=filepath
-                   ,to=url
-                   ,httpheader = c('Content-Type'=content.type[[1]])
-                   ,customrequest='PUT'
-                   ,upload=TRUE
-                   ,httpheader=c(Accept="*/*",'Content-Type'="application/zip")
-                   ,username = globalGSCredentials$gsRESTUSER
-                   ,password = globalGSCredentials$gsRESTPW
-                   ,timeout = 36000
-                   ,httpauth=AUTH_BASIC
-                   ,verbose = TRUE
-                   ,writefunction = h$update)
+  res <- ftpUpload(
+    what=filepath,
+    to=url,
+    httpheader = c('Content-Type'=content.type[[1]]),
+    customrequest='PUT',
+    upload=TRUE,
+    httpheader=c(Accept="*/*",'Content-Type'="application/zip"),
+    username = globalGSCredentials$gsRESTUSER,
+    password = globalGSCredentials$gsRESTPW,
+    timeout = 36000,
+    httpauth=AUTH_BASIC,
+    verbose = TRUE,
+    writefunction = h$update
+  )
 
   #utils.debugprint(sprintf("utils.addShp2DataStore output: %s",h$value()))
   return(h$value())
