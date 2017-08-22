@@ -11,19 +11,19 @@ utils.loadGMLtoDF <- function(url) {
   # create a unique temp file name for gml
   tmp_file_name <- UUIDgenerate(FALSE)
   tmp_file_path <- sprintf("%s.xml", tmp_file_name)
-  tmp_file_path <- file.path(TEMP_DIR_PATH, tmp_file_path)
+  tmp_file_path <- file.path(TEMP_DIR, tmp_file_path)
   tmp_csv_path <- sprintf("%s.csv", tmp_file_name)
-  tmp_csv_path <- file.path(TEMP_DIR_PATH, tmp_csv_path)
+  tmp_csv_path <- file.path(TEMP_DIR, tmp_csv_path)
 
   # if tempDirPath not existed, create
-  if (dir.exists(TEMP_DIR_PATH) == FALSE) {
+  if (dir.exists(TEMP_DIR) == FALSE) {
     dir.create(
-      TEMP_DIR_PATH,
+      TEMP_DIR,
       showWarnings = FALSE,
       recursive = TRUE
     )
 
-    utils.debugprint(sprintf("%s created", TEMP_DIR_PATH))
+    utils.debugprint(sprintf("%s created", TEMP_DIR))
   }
 
   df <- tryCatch(
@@ -118,7 +118,7 @@ utils.publish_shp_to_geoserver <- function(spobj) {
 
   # save spobj as shp file
   tmp_file_name <- UUIDgenerate(FALSE)
-  tmp_file_path <- file.path(TEMP_DIR_PATH, tmp_file_name)
+  tmp_file_path <- file.path(TEMP_DIR, tmp_file_name)
   dir.create(tmp_file_path, showWarnings = FALSE, recursive = TRUE)
   writeOGR(
     spobj,

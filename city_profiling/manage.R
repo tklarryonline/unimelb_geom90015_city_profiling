@@ -44,11 +44,11 @@ registerDoParallel(cores = CORES)
 
 # Reads env variables
 GEOSERVER_CREDENTIALS <- list(
-  URL = Sys.env("GEOSERVER_URL"),
-  USERNAME = Sys.env("GEOSERVER_USERNAME"),
-  PASSWORD = Sys.env("GEOSERVER_PASSWORD"),
-  WORKSPACE = Sys.env("GEOSERVER_WORKSPACE"),
-  DATASTORE = Sys.env("GEOSERVER_DATASTORE")
+  URL = Sys.getenv("GEOSERVER_URL"),
+  USERNAME = Sys.getenv("GEOSERVER_USERNAME"),
+  PASSWORD = Sys.getenv("GEOSERVER_PASSWORD"),
+  WORKSPACE = Sys.getenv("GEOSERVER_WORKSPACE"),
+  DATASTORE = Sys.getenv("GEOSERVER_DATASTORE")
 )
 
 TEMP_DIR <- file.path(getwd(), "tempdata")

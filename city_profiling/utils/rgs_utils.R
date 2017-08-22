@@ -64,11 +64,11 @@ library(XML)
 # this variable contains all credentials for accessing a geoserver instance to publish data layers and create styles
 globalGSCredentials <- list()
 
-globalGSCredentials["gsRESTURL"] <- Sys.env("GEOSERVER_URL")
-globalGSCredentials["gsRESTUSER"] <- Sys.env("GEOSERVER_USERNAME")
-globalGSCredentials["gsRESTPW"] <- Sys.env("GEOSERVER_PASSWORD")
-globalGSCredentials["gsWORKSPACENAME"] <- Sys.env("GEOSERVER_WORKSPACE")
-globalGSCredentials["gsDATASTORESNAME"] <- Sys.env("GEOSERVER_DATASTORE")
+globalGSCredentials["gsRESTURL"] <- Sys.getenv("GEOSERVER_URL")
+globalGSCredentials["gsRESTUSER"] <- Sys.getenv("GEOSERVER_USERNAME")
+globalGSCredentials["gsRESTPW"] <- Sys.getenv("GEOSERVER_PASSWORD")
+globalGSCredentials["gsWORKSPACENAME"] <- Sys.getenv("GEOSERVER_WORKSPACE")
+globalGSCredentials["gsDATASTORESNAME"] <- Sys.getenv("GEOSERVER_DATASTORE")
 globalGSCredentials["tempDirPath"] <- file.path(getwd(), "tempdata")
 globalGSCredentials["wfsUrlTemplate"] <- "%s/wfs?service=wfs&version=1.0.0&request=GetFeature&typeName=%s:%s&outputFormat=json" #DON'T MODIFY THIS LINE
 
