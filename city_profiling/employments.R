@@ -1,5 +1,8 @@
+# ==========================================================================
 # Author: Luan Thanh Nguyen
 # Email:  luan@tklarryonline.me
+#
+# ==========================================================================
 
 # Source the manage.R file to setup project
 source("./manage.R")

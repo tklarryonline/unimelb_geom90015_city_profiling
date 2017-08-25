@@ -39,7 +39,7 @@ library(doParallel)
 library(igraph)
 
 # Set number of cores
-CORES <- 1
+CORES <- 4
 registerDoParallel(cores = CORES)
 
 # Reads env variables

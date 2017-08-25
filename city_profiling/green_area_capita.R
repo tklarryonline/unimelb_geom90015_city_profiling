@@ -52,3 +52,54 @@ pop_basenum = 100000
 
 vic.population <- vic.population.read_data()
 vic.green_spaces <- vic.green_areas.read_data()
+
+vic.population@data[, "gaarea"] = 0.0
+vic.population@data[, "idxval"] = 0.0
+
+result <- foreach(
+  i = 1:nrow(vic.population),
+  .combine = rbind,
+  .export = c("SpatialPolygons", "over", "gIntersection", "gArea")
+) %dopar% {
+  # get the geometry polgyon of population, return 0 for gaarea and idxval if geometry is NULL
+  if (is.null(vic.population@polygons[i])) {
+    out = c(0, 0)
+  } else {
+    geom_pop = SpatialPolygons(vic.population@polygons[i], proj4string = vic.population@proj4string)
+
+    # accumulate the total size of intersected greenarea for the current population geometry
+    intersectedGreenArea = 0.0
+
+    # this 'over' method is much faster to find all intersected green area polygons of current pop polygon
+    # temporarily save all intersected greenarea into a sub spatialdataframe
+    intersectedGADF = vic.green_spaces[!is.na(over(vic.green_spaces, vic.population[i, ]))[, 1], ]
+
+    # if intersected with one or more greenarea polygon, calculate and accumulate the intersected area for each population meshblock
+    if (nrow(intersectedGADF) > 0) {
+      for (j in nrow(intersectedGADF):1) {
+        geom_greenarea = SpatialPolygons(intersectedGADF@polygons[j], proj4string =
+                                           intersectedGADF@proj4string)
+
+        # do the actual intersction process
+        intsectedGeom = gIntersection(geom_pop, geom_greenarea)
+        # accumulate the size of intersected greenarea
+        intersectedGreenArea = intersectedGreenArea + gArea(intsectedGeom)
+
+      }
+    }
+
+    # check population attribute, make sure it is valid
+    population = vic.population@data[i, "total"]
+
+    if (is.null(population) || is.na(population))
+      population = 0
+
+    # for those polygons with 0 population, assign idxval = 0
+    idx_val = 0
+    if (population > 0) {
+      idx_val = intersectedGreenArea / (population / (pop_basenum * 1.0))
+    }
+
+    out = c(intersectedGreenArea, idx_val)
+  }
+}
