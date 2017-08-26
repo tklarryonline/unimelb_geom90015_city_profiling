@@ -221,9 +221,9 @@ utils.upload_shp_to_geoserver <- function(shapefile_name, shapefile_path) {
   # Create new FeatureType based on the uploaded shapefile
   results <- utils.createFeatureType(shapefile_name)
   published_url <- sprintf(
-    globalGSCredentials$wfsUrlTemplate,
-    globalGSCredentials$gsRESTURL,
-    globalGSCredentials$gsWORKSPACENAME,
+    WFS_URL_TEMPLATE,
+    GEOSERVER_CREDENTIALS$URL,
+    GEOSERVER_CREDENTIALS$WORKSPACE,
     shapefile_name
   )
 

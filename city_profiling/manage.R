@@ -4,8 +4,9 @@
 # The purpose of this file is to install/init all the required packages
 # And source the correct util files
 
-readRenviron(".Renviron")
-
+#
+# Installs the important packages
+# --------------------------------------------------------------------------
 REQUIRE_PACKAGES <- c(
   # Required ones for Dr. Ben's utils work
   "maptools",
@@ -22,23 +23,15 @@ REQUIRE_PACKAGES <- c(
   "igraph"
 )
 
-install_package <- function(package) {
-  if (!require(package)) {
-    install.packages(package)
-  }
+uninstalled_packages <- REQUIRE_PACKAGES[!(REQUIRE_PACKAGES %in% installed.packages())]
+if (length(uninstalled_packages) > 0) {
+  install.packages(uninstalled_packages)
 }
 
-for (package in REQUIRE_PACKAGES) {
-  install_package(package)
-}
-
-# Loads the file from Dr. Ben
-source(file.path(getwd(), "utils", "rgs_utils.R"))
-source(file.path(getwd(), "utils", "custom_utils.R"))
-
-# Loads left packages
-library(doParallel)
-library(igraph)
+#
+# Sets up the working environment
+# --------------------------------------------------------------------------
+readRenviron(".Renviron")
 
 # Set number of cores
 CORES <- 4
@@ -55,4 +48,16 @@ GEOSERVER_CREDENTIALS <- list(
 
 TEMP_DIR <- file.path(getwd(), "tempdata")
 EXPORTS_DIR <- file.path(getwd(), "exports")
-WFS_URL <- "%s/wfs?service=wfs&version=1.0.0&request=GetFeature&typeName=%s:%s&outputFormat=json"
+
+#
+# Loads necessary utilities
+# --------------------------------------------------------------------------
+# Loads the file from Dr. Ben
+source(file.path(getwd(), "utils", "rgs_utils.R"))
+
+# And my file
+source(file.path(getwd(), "utils", "custom_utils.R"))
+
+# Loads the packages I need
+library(doParallel)
+library(igraph)
