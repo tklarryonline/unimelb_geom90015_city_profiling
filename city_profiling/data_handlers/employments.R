@@ -4,25 +4,30 @@
 # UniMelb email: l.nguyen50@student.unimelb.edu.au
 # ==========================================================================
 
-library(stats4)
 library(dplyr)
+library(rgdal)
+library(stats4)
 
 
 MelbourneEmployments <- setRefClass(
   Class = "MelbourneEmployments",
   fields = list(
     url = function()
-      return("http://115.146.92.236:8080/geoserver/group2/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=group2:vic_employment_by_sex_and_hours_aus_sa2_2011_ste_gccsa_info&ouputFormat=JSON"),
-    data = "SpatialPolygonsDataFrame"
+      return("http://115.146.92.236:8080/geoserver/group2/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=group2:vic_employment_by_sex_and_hours_aus_sa2_2011_ste_gccsa_info&ouputFormat=JSON&cql_filter=gcc_code11=%272GMEL%27"),
+    data = "data.frame"
   ),
   methods = list(
+    get_layer_name = function() {
+      layers <- rgdal::ogrListLayers(dsn = url)
+      return(layers[1])
+    },
     load_data = function() {
       df <- utils.loadGMLtoDF(url = url)
 
       # Beautify the column names
       colnames(df) <- sapply(
         colnames(df),
-        function(x) gsub(layerName, "", x)
+        function(x) gsub(sprintf("%s.", get_layer_name()), "", x)
       )
 
       # Drop unnecessary columns
@@ -43,7 +48,7 @@ MelbourneEmployments <- setRefClass(
       df <- utils.df.toNumeric(df = df, convertColumns = numericCols)
 
       # Calculate the must have columns for indicators
-      dplyr::mutate_(
+      df <- dplyr::mutate_(
         df,
         total_employees = quote(exmployed_full_time_persons + employed_part_time_persons),
         female_employees = quote(exmployed_full_time_female + employed_part_time_female),
@@ -62,11 +67,16 @@ MelbourneEmployments <- setRefClass(
         fm_employees_ratio = quote(female_employees / total_labour)
       )
 
+      df$unemploy_ratio[is.na(df$unemploy_ratio)] <- 1
+      df[c("job_avail_ratio", "fm_employees_ratio")][is.na(df[c("job_avail_ratio", "fm_employees_ratio")])] <- 0
+
       # Now only select the relevant columns
       df <- df[c(
-        "ste_code11", "sa2_code11", "sa2_main11", "sa2_code",
+        "gcc_code11", "ste_code11", "sa2_code11", "sa2_main11", "sa2_code",
         "total_labour", "unemploy_ratio", "job_avail_ratio", "fm_employees_ratio"
       )]
+
+      data <<- df
     },
     get_utm_data = function() {
       utils.project2UTM(data)

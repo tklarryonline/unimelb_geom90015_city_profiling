@@ -4,6 +4,8 @@
 # The purpose of this file is to install/init all the required packages
 # And source the correct util files
 
+readRenviron(".Renviron")
+
 REQUIRE_PACKAGES <- c(
   # Required ones for Dr. Ben's utils work
   "maptools",
@@ -53,3 +55,4 @@ GEOSERVER_CREDENTIALS <- list(
 
 TEMP_DIR <- file.path(getwd(), "tempdata")
 EXPORTS_DIR <- file.path(getwd(), "exports")
+WFS_URL <- "%s/wfs?service=wfs&version=1.0.0&request=GetFeature&typeName=%s:%s&outputFormat=json"

@@ -202,3 +202,35 @@ utils.create_feature_type <- function(filename) {
 
   return(h$value())
 }
+
+utils.upload_shp_to_geoserver <- function(shapefile_name, shapefile_path) {
+  # Zip the shapefile
+  zip(zipfile = shapefile_path, files = dir(shapefile_path, full.names = TRUE), flags = "-j")
+  zipped_shapefile_path <- sprintf("%s.zip", shapefile_path)
+
+  # Upload the zipped shapefile to the GeoServer
+  results <- utils.addShp2DataStore(zipped_shapefile_path)
+
+  if (nchar(results) > 0) {
+    print("Something is wrong with the uploading")
+    print("Shapefile: %s", zipped_shapefile_path)
+
+    return(NULL)
+  }
+
+  # Create new FeatureType based on the uploaded shapefile
+  results <- utils.createFeatureType(shapefile_name)
+  published_url <- sprintf(
+    globalGSCredentials$wfsUrlTemplate,
+    globalGSCredentials$gsRESTURL,
+    globalGSCredentials$gsWORKSPACENAME,
+    shapefile_name
+  )
+
+  # Removes the shapefile and zipped shapefile
+  file.remove(zipped_shapefile_path)
+  unlink(shapefile_path, recursive = TRUE)
+
+  print("Shapefile publish!")
+  print(published_url)
+}
