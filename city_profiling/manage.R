@@ -28,6 +28,10 @@ if (length(uninstalled_packages) > 0) {
   install.packages(uninstalled_packages)
 }
 
+# Loads the packages I need
+library(doParallel)
+library(igraph)
+
 #
 # Sets up the working environment
 # --------------------------------------------------------------------------
@@ -57,7 +61,3 @@ source(file.path(getwd(), "utils", "rgs_utils.R"))
 
 # And my file
 source(file.path(getwd(), "utils", "custom_utils.R"))
-
-# Loads the packages I need
-library(doParallel)
-library(igraph)
