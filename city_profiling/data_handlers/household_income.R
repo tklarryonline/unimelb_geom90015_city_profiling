@@ -4,8 +4,6 @@
 # UniMelb email: l.nguyen50@student.unimelb.edu.au
 # ==========================================================================
 
-library(dplyr)
-library(rgdal)
 library(stats4)
 
 
