@@ -87,9 +87,8 @@ proj4string_utm_template = "+proj=utm +zone=%i %s+ellps=WGS84 +datum=WGS84 +unit
 #'
 #' @examples
 #' utils.debugprint("all done")
-utils.debugprint <- function(arg1){
-
-  print(sprintf("=== %s",arg1 ))
+utils.debugprint <- function(arg1) {
+  print(sprintf("=== %s", arg1))
 
 }
 
@@ -103,38 +102,40 @@ utils.debugprint <- function(arg1){
 #'
 #' @examples
 utils.loadGeoJSON2SP <- function(url) {
-
   # create a unique temp file name for geojson
-  tmpFilePath <- file.path(globalGSCredentials$tempDirPath, sprintf("%s.geojson", UUIDgenerate(FALSE)))
+  tmpFilePath <-
+    file.path(globalGSCredentials$tempDirPath,
+              sprintf("%s.geojson", UUIDgenerate(FALSE)))
 
   # if tempDirPath not existed, create
-  if(dir.exists(globalGSCredentials$tempDirPath)==FALSE){
+  if (dir.exists(globalGSCredentials$tempDirPath) == FALSE) {
+    dir.create(
+      globalGSCredentials$tempDirPath,
+      showWarnings = FALSE,
+      recursive = TRUE
+    )
 
-    dir.create(globalGSCredentials$tempDirPath, showWarnings=FALSE, recursive=TRUE)
-
-    utils.debugprint(sprintf("%s created",globalGSCredentials$tempDirPath))
+    utils.debugprint(sprintf("%s created", globalGSCredentials$tempDirPath))
   }
 
-  spobj <- tryCatch(
-    {
-      # load data from url
-      geojson = getURL(url, timeout=36000)
+  spobj <- tryCatch({
+    # load data from url
+    geojson = getURL(url, timeout = 36000)
 
-      # save data as a local copy
-      write(geojson, tmpFilePath)
+    # save data as a local copy
+    write(geojson, tmpFilePath)
 
-      # load it as sp object
-      readOGR(tmpFilePath, "OGRGeoJSON")
-    },
-    error=function(cond) {
-      utils.debugprint(cond)
-      return(NULL)
-    },
-    finally={
-      # remove local temp file
-      file.remove(tmpFilePath)
-    }
-  )
+    # load it as sp object
+    readOGR(tmpFilePath, "OGRGeoJSON")
+  },
+  error = function(cond) {
+    utils.debugprint(cond)
+    return(NULL)
+  },
+  finally = {
+    # remove local temp file
+    file.remove(tmpFilePath)
+  })
   return(spobj)
 
 }
@@ -147,24 +148,21 @@ utils.loadGeoJSON2SP <- function(url) {
 #' @export
 #'
 #' @examples
-utils.loadGeoJSON2DF <- function(url){
+utils.loadGeoJSON2DF <- function(url) {
+  dfobj <- tryCatch({
+    # load data from url
+    geojson = getURL(url, timeout = 36000)
 
-  dfobj <- tryCatch(
-    {
-      # load data from url
-      geojson = getURL(url, timeout=36000)
+    tmp = fromJSON(geojson)
+    # only return the properties data frame
+    tmp$features$properties
+  },
+  error = function(cond) {
+    return(NULL)
+  },
+  finally = {
 
-      tmp = fromJSON(geojson)
-      # only return the properties data frame
-      tmp$features$properties
-    },
-    error=function(cond) {
-      return(NULL)
-    },
-    finally={
-
-    }
-  )
+  })
   return(dfobj)
 
 }
@@ -178,37 +176,47 @@ utils.loadGeoJSON2DF <- function(url){
 #' @export
 #'
 #' @examples
-utils.publishSP2GeoServer <- function(spobj){
-
+utils.publishSP2GeoServer <- function(spobj) {
   procflag = TRUE
   publishedWfsUrl = NULL #if error occurs, return publishedWfsUrl as NULL
 
   # check if sp is null, return null if null
-  if(is.null(spobj)){
+  if (is.null(spobj)) {
     return(NULL)
   }
 
   # save spobj as shp file
   tmpFileName = UUIDgenerate(FALSE)
   tmpFilePath = file.path(globalGSCredentials$tempDirPath, tmpFileName)
-  dir.create(tmpFilePath, showWarnings=FALSE, recursive=TRUE)
-  writeOGR(spobj, dsn=tmpFilePath, layer = tmpFileName,  driver="ESRI Shapefile", check_exists=TRUE, overwrite_layer=TRUE)
+  dir.create(tmpFilePath, showWarnings = FALSE, recursive = TRUE)
+  writeOGR(
+    spobj,
+    dsn = tmpFilePath,
+    layer = tmpFileName,
+    driver = "ESRI Shapefile",
+    check_exists = TRUE,
+    overwrite_layer = TRUE
+  )
 
   # zip shp file
   # ref: for windows, install Rtools from https://cran.r-project.org/bin/windows/Rtools/ and make sure it is on the system Path
   # flag -j to store just the name of a saved file (junk the path), and do not store directory names. By default, zip will store the full path
-  zip(zipfile = tmpFilePath, files = dir(tmpFilePath, full.names = TRUE), flags="-j")
+  zip(
+    zipfile = tmpFilePath,
+    files = dir(tmpFilePath, full.names = TRUE),
+    flags = "-j"
+  )
 
   # upload zip for geoserver
   out = utils.addShp2DataStore(sprintf("%s.zip", tmpFilePath))
-  if(nchar(out)>0){
+  if (nchar(out) > 0) {
     procflag = FALSE
   }
 
-  if(procflag){
+  if (procflag) {
     # publish it as new featuretype
     out = utils.createFeatureType(tmpFileName)
-    if(nchar(out)>0){
+    if (nchar(out) > 0) {
       # it rarely happens (current testing indicates when a new ws and new ds is created at the same time, server might raise a 500 error), it seems that the layer is still published as usual. need more investigation, just skip seeting procflag = FALSE for now
       #procflag = FALSE
     }
@@ -216,14 +224,19 @@ utils.publishSP2GeoServer <- function(spobj){
 
   # return wfs url for the uploaded datalayer
   #wfsUrlTemplate: %s/wfs?service=wfs&version=1.0.0&request=GetFeature&typeName=%s:%s&outputFormat=json
-  if(procflag){
-    publishedWfsUrl = sprintf(globalGSCredentials$wfsUrlTemplate, globalGSCredentials$gsRESTURL,globalGSCredentials$gsWORKSPACENAME, tmpFileName)
+  if (procflag) {
+    publishedWfsUrl = sprintf(
+      globalGSCredentials$wfsUrlTemplate,
+      globalGSCredentials$gsRESTURL,
+      globalGSCredentials$gsWORKSPACENAME,
+      tmpFileName
+    )
   }
 
   # remove tmp zip file
   file.remove(sprintf("%s.zip", tmpFilePath))
   # remove tmp shp file folder
-  unlink(tmpFilePath, recursive=TRUE)
+  unlink(tmpFilePath, recursive = TRUE)
 
   return(publishedWfsUrl)
 }
@@ -252,36 +265,38 @@ utils.publishSP2GeoServer <- function(spobj){
 #'
 #' @examples
 utils.publishSP2GeoServerWithStyle <- function(spobj,
-                                        attrname,
-                                        palettename="Reds",
-                                        colorreverseorder=FALSE,
-                                        geomtype="Geometry",
-                                        colornum=5,
-                                        classifier="Jenks")
-  {
-
+                                               attrname,
+                                               palettename = "Reds",
+                                               colorreverseorder = FALSE,
+                                               geomtype = "Geometry",
+                                               colornum = 5,
+                                               classifier = "Jenks")
+{
   # TODO: this is the place to add any additional column (i.e. normalised values) to spobj
 
   # make sure spobj is projected in EPSG:4326 (WGS84) before publishing it.
-  spobj = spTransform(spobj,CRS(proj4string_epsg4326))
+  spobj = spTransform(spobj, CRS(proj4string_epsg4326))
 
   # publish sp to geoserver
   outputWfsUrl = utils.publishSP2GeoServer(spobj)
-  if(is.null(outputWfsUrl)){
+  if (is.null(outputWfsUrl)) {
     return(NULL)
   }
 
   # calculte wms style
-  wmsStyleResult = fromJSON(utils.createWMSStyle(wfsurl=outputWfsUrl,
-                                                 attrname=attrname,
-                                                 palettename=palettename,
-                                                 colorreverseorder=colorreverseorder,
-                                                 geomtype=geomtype,
-                                                 colornum=colornum,
-                                                 classifier=classifier
-                                                 ))
+  wmsStyleResult = fromJSON(
+    utils.createWMSStyle(
+      wfsurl = outputWfsUrl,
+      attrname = attrname,
+      palettename = palettename,
+      colorreverseorder = colorreverseorder,
+      geomtype = geomtype,
+      colornum = colornum,
+      classifier = classifier
+    )
+  )
   wmsStyleparams = list()
-  if(wmsStyleResult$status==0){
+  if (wmsStyleResult$status == 0) {
     wmsStyleparams = wmsStyleResult$data
   }
 
@@ -289,7 +304,7 @@ utils.publishSP2GeoServerWithStyle <- function(spobj,
   # create content of the 1st element
 
   geolayerinfo = list(
-    layername = utils.getLayerNameFromWFSUrl(wfsurl=outputWfsUrl),
+    layername = utils.getLayerNameFromWFSUrl(wfsurl = outputWfsUrl),
     bbox = utils.getBbox(spobj),
     wfsurl = outputWfsUrl,
     wmsstyle = wmsStyleparams
@@ -322,15 +337,16 @@ utils.publishSP2GeoServerWithStyle <- function(spobj,
 #'
 #' @examples
 utils.publishSP2GeoServerWithMultiStyles <- function(spobj,
-                                                    attrname_vec=c(""),
-                                                    palettename_vec=c("Reds"),
-                                                    colorreverseorder_vec=c(FALSE),
-                                                    geomtype = "Geometry",
-                                                    colornum_vec=c(5),
-                                                    classifier_vec=c("Jenks"))
-  {
+                                                     attrname_vec = c(""),
+                                                     palettename_vec = c("Reds"),
+                                                     colorreverseorder_vec =
+                                                       c(FALSE),
+                                                     geomtype = "Geometry",
+                                                     colornum_vec = c(5),
+                                                     classifier_vec = c("Jenks"))
+{
   # check data
-  if(length(attrname_vec)==0){
+  if (length(attrname_vec) == 0) {
     utils.debugprint("length of attrname_vec should not be 0")
     return(NULL)
   }
@@ -339,29 +355,29 @@ utils.publishSP2GeoServerWithMultiStyles <- function(spobj,
 
   # check the length of other parameter vectors, fill any missing elements by duplicating the value of first element
   n_vec = length(palettename_vec)
-  if(n_vec < n_style){
-    for (i in 1:(n_style - n_vec)){
+  if (n_vec < n_style) {
+    for (i in 1:(n_style - n_vec)) {
       palettename_vec = c(palettename_vec, palettename_vec[1])
     }
   }
 
   n_vec = length(colorreverseorder_vec)
-  if(n_vec < n_style){
-    for (i in 1:(n_style - n_vec)){
+  if (n_vec < n_style) {
+    for (i in 1:(n_style - n_vec)) {
       colorreverseorder_vec = c(colorreverseorder_vec, colorreverseorder_vec[1])
     }
   }
 
   n_vec = length(colornum_vec)
-  if(n_vec < n_style){
-    for (i in 1:(n_style - n_vec)){
+  if (n_vec < n_style) {
+    for (i in 1:(n_style - n_vec)) {
       colornum_vec = c(colornum_vec, colornum_vec[1])
     }
   }
 
   n_vec = length(classifier_vec)
-  if(n_vec < n_style){
-    for (i in 1:(n_style - n_vec)){
+  if (n_vec < n_style) {
+    for (i in 1:(n_style - n_vec)) {
       classifier_vec = c(classifier_vec, classifier_vec[1])
     }
   }
@@ -369,12 +385,12 @@ utils.publishSP2GeoServerWithMultiStyles <- function(spobj,
   # TODO: this is the place to add any additional column (i.e. normalised values) to spobj
 
   # make sure spobj is projected in EPSG:4326 (WGS84) before publishing it.
-  spobj = spTransform(spobj,CRS(proj4string_epsg4326))
+  spobj = spTransform(spobj, CRS(proj4string_epsg4326))
 
 
   # publish sp to geoserver
   outputWfsUrl = utils.publishSP2GeoServer(spobj)
-  if(is.null(outputWfsUrl)){
+  if (is.null(outputWfsUrl)) {
     utils.debugprint("error occurs in utils.publishSP2GeoServer method, try it again")
     return(NULL)
   }
@@ -382,35 +398,38 @@ utils.publishSP2GeoServerWithMultiStyles <- function(spobj,
   # loop all styles to be created
   geolayers_elements = list()
 
-  for(i in 1: n_style){
-
+  for (i in 1:n_style) {
     attrname = attrname_vec[i]
-    palettename=palettename_vec[i]
-    colorreverseorder=colorreverseorder_vec[i]
-    colornum=colornum_vec[i]
+    palettename = palettename_vec[i]
+    colorreverseorder = colorreverseorder_vec[i]
+    colornum = colornum_vec[i]
     classifier <- classifier_vec[i]
 
     # calculte wms style
-    wmsStyleResult <- fromJSON(utils.createWMSStyle(wfsurl=outputWfsUrl,
-                                                   attrname=attrname,
-                                                   palettename=palettename,
-                                                   colorreverseorder=colorreverseorder,
-                                                   geomtype=geomtype,
-                                                   colornum=colornum,
-                                                   classifier=classifier
-    ))
+    wmsStyleResult <-
+      fromJSON(
+        utils.createWMSStyle(
+          wfsurl = outputWfsUrl,
+          attrname = attrname,
+          palettename = palettename,
+          colorreverseorder = colorreverseorder,
+          geomtype = geomtype,
+          colornum = colornum,
+          classifier = classifier
+        )
+      )
 
     wmsStyleparams = list()
-    if(wmsStyleResult$status==0){
+    if (wmsStyleResult$status == 0) {
       wmsStyleparams = wmsStyleResult$data
     }
 
 
     geolayers_element = list(
-      layername=utils.getLayerNameFromWFSUrl(wfsurl=outputWfsUrl),
-      bbox=utils.getBbox(spobj),
-      wfsurl=outputWfsUrl,
-      wmsstyle=wmsStyleparams
+      layername = utils.getLayerNameFromWFSUrl(wfsurl = outputWfsUrl),
+      bbox = utils.getBbox(spobj),
+      wfsurl = outputWfsUrl,
+      wmsstyle = wmsStyleparams
     )
 
     geolayers_elements = append(geolayers_elements, list(geolayers_element))
@@ -429,8 +448,7 @@ utils.publishSP2GeoServerWithMultiStyles <- function(spobj,
 #' @export
 #'
 #' @examples
-utils.createFeatureType <- function(filename){
-
+utils.createFeatureType <- function(filename) {
   # publish uploaded datalayer
   h <- basicTextGatherer()
   url <- sprintf(
@@ -449,12 +467,12 @@ utils.createFeatureType <- function(filename){
   # add a new featuretype by sending a POST request
   curlPerform(
     url = url,
-    httpheader=c(Accept="text/xml", 'Content-Type'="text/xml"),
+    httpheader = c(Accept = "text/xml", 'Content-Type' = "text/xml"),
     username = globalGSCredentials$gsRESTUSER,
     password = globalGSCredentials$gsRESTPW,
-    httpauth=AUTH_BASIC,
-    post=1,
-    postfields=body,
+    httpauth = AUTH_BASIC,
+    post = 1,
+    postfields = body,
     writefunction = h$update,
     verbose = TRUE
   )
@@ -472,36 +490,41 @@ utils.createFeatureType <- function(filename){
 #' @export
 #'
 #' @examples
-utils.createWorkspace <- function(wsname){
-
+utils.createWorkspace <- function(wsname) {
   wsContentXML = xmlInternalTreeParse(utils.getWorkspace())
 
-  if(is.null(wsContentXML)) return("fail to load workspaces")
+  if (is.null(wsContentXML))
+    return("fail to load workspaces")
 
-  isExisting = (length(getNodeSet(wsContentXML, sprintf("/workspaces/workspace[name='%s']",wsname))) > 0)
+  isExisting = (length(getNodeSet(
+    wsContentXML,
+    sprintf("/workspaces/workspace[name='%s']", wsname)
+  )) > 0)
 
   # if workspace already exists, do nothing
-  if(isExisting) return("")
+  if (isExisting)
+    return("")
 
   # otherwise, create a new workspace
   h <- basicTextGatherer()
 
-  url <- sprintf('%s/rest/workspaces', globalGSCredentials$gsRESTURL)
+  url <-
+    sprintf('%s/rest/workspaces', globalGSCredentials$gsRESTURL)
 
   body <- sprintf('<workspace><name>%s</name></workspace>', wsname)
 
   curlPerform(
     url = url,
-    httpheader=c(Accept="text/xml", 'Content-Type'="text/xml"),
+    httpheader = c(Accept = "text/xml", 'Content-Type' = "text/xml"),
     username = globalGSCredentials$gsRESTUSER,
     password = globalGSCredentials$gsRESTPW,
-    httpauth=AUTH_BASIC,
-    post=1,
-    postfields=body,
+    httpauth = AUTH_BASIC,
+    post = 1,
+    postfields = body,
     writefunction = h$update,
     verbose = TRUE
   )
-  utils.debugprint(sprintf("workspace: %s created",wsname))
+  utils.debugprint(sprintf("workspace: %s created", wsname))
   return(h$value())
 }
 
@@ -514,18 +537,18 @@ utils.createWorkspace <- function(wsname){
 #' @export
 #'
 #' @examples
-utils.getWorkspace <- function(){
-
+utils.getWorkspace <- function() {
   h <- basicTextGatherer()
 
-  url <- sprintf('%s/rest/workspaces' ,globalGSCredentials$gsRESTURL)
+  url <-
+    sprintf('%s/rest/workspaces' , globalGSCredentials$gsRESTURL)
 
   curlPerform(
     url = url,
-    httpheader=c(Accept="text/xml", 'Content-Type'="text/xml"),
+    httpheader = c(Accept = "text/xml", 'Content-Type' = "text/xml"),
     username = globalGSCredentials$gsRESTUSER,
     password = globalGSCredentials$gsRESTPW,
-    httpauth=AUTH_BASIC,
+    httpauth = AUTH_BASIC,
     writefunction = h$update,
     verbose = TRUE
   )
@@ -541,8 +564,7 @@ utils.getWorkspace <- function(){
 #' @export
 #'
 #' @examples
-utils.addShp2DataStore <- function(filepath){
-
+utils.addShp2DataStore <- function(filepath) {
   #create workspace if it doesn't exist
   utils.createWorkspace(globalGSCredentials$gsWORKSPACENAME)
 
@@ -560,16 +582,16 @@ utils.addShp2DataStore <- function(filepath){
 
   # upload shpfile by sending a PUT request
   res <- ftpUpload(
-    what=filepath,
-    to=url,
-    httpheader = c('Content-Type'=content.type[[1]]),
-    customrequest='PUT',
-    upload=TRUE,
-    httpheader=c(Accept="*/*",'Content-Type'="application/zip"),
+    what = filepath,
+    to = url,
+    httpheader = c('Content-Type' = content.type[[1]]),
+    customrequest = 'PUT',
+    upload = TRUE,
+    httpheader = c(Accept = "*/*", 'Content-Type' = "application/zip"),
     username = globalGSCredentials$gsRESTUSER,
     password = globalGSCredentials$gsRESTPW,
     timeout = 36000,
-    httpauth=AUTH_BASIC,
+    httpauth = AUTH_BASIC,
     verbose = TRUE,
     writefunction = h$update
   )
@@ -588,11 +610,11 @@ utils.addShp2DataStore <- function(filepath){
 #' @export
 #'
 #' @examples
-utils.uploadFunctionHandler <- function(file){
+utils.uploadFunctionHandler <- function(file) {
   # this method is learnt from RCurl\R\upload.R in https://github.com/omegahat/RCurl
-      function(size) {
-        readBin(file, raw(), size)
-      }
+  function(size) {
+    readBin(file, raw(), size)
+  }
 }
 
 
@@ -618,22 +640,45 @@ utils.uploadFunctionHandler <- function(file){
 #' @export
 #'
 #' @examples
-utils.createWMSStyle <- function(wfsurl, attrname, palettename="Reds", colorreverseorder=FALSE, geomtype="Geometry", colornum=5, classifier="Jenks"){
+utils.createWMSStyle <-
+  function(wfsurl,
+           attrname,
+           palettename = "Reds",
+           colorreverseorder = FALSE,
+           geomtype = "Geometry",
+           colornum = 5,
+           classifier = "Jenks") {
+    wfsurl = sprintf("%s%s%s", wfsurl, "&propertyName=", attrname)
 
-  wfsurl = sprintf("%s%s%s", wfsurl, "&propertyName=", attrname)
-
-  createStyleUrl = sprintf("%s%s%s",WMSStyleCreateUrl, "?attrname=", attrname)
-  createStyleUrl = sprintf("%s%s%s",createStyleUrl, "&palettename=", palettename)
-  createStyleUrl = sprintf("%s%s%s",createStyleUrl, "&colorreverseorder=", colorreverseorder)
-  createStyleUrl = sprintf("%s%s%s",createStyleUrl, "&geomtype=", geomtype)
-  createStyleUrl = sprintf("%s%s%s",createStyleUrl, "&colornum=", colornum)
-  createStyleUrl = sprintf("%s%s%s",createStyleUrl, "&classifier=", classifier)
-  createStyleUrl = sprintf("%s%s%s",createStyleUrl, "&url=", URLencode(wfsurl,reserved=TRUE))
-  createStyleUrl = sprintf("%s%s%s",createStyleUrl, "&gsresturl=", URLencode(globalGSCredentials$gsRESTURL,reserved=TRUE))
-  createStyleUrl = sprintf("%s%s%s",createStyleUrl, "&gsusername=", globalGSCredentials$gsRESTUSER)
-  createStyleUrl = sprintf("%s%s%s",createStyleUrl, "&gspassword=", globalGSCredentials$gsRESTPW)
-  return (getURL(createStyleUrl))
-}
+    createStyleUrl = sprintf("%s%s%s", WMSStyleCreateUrl, "?attrname=", attrname)
+    createStyleUrl = sprintf("%s%s%s", createStyleUrl, "&palettename=", palettename)
+    createStyleUrl = sprintf("%s%s%s",
+                             createStyleUrl,
+                             "&colorreverseorder=",
+                             colorreverseorder)
+    createStyleUrl = sprintf("%s%s%s", createStyleUrl, "&geomtype=", geomtype)
+    createStyleUrl = sprintf("%s%s%s", createStyleUrl, "&colornum=", colornum)
+    createStyleUrl = sprintf("%s%s%s", createStyleUrl, "&classifier=", classifier)
+    createStyleUrl = sprintf("%s%s%s",
+                             createStyleUrl,
+                             "&url=",
+                             URLencode(wfsurl, reserved = TRUE))
+    createStyleUrl = sprintf(
+      "%s%s%s",
+      createStyleUrl,
+      "&gsresturl=",
+      URLencode(globalGSCredentials$gsRESTURL, reserved = TRUE)
+    )
+    createStyleUrl = sprintf("%s%s%s",
+                             createStyleUrl,
+                             "&gsusername=",
+                             globalGSCredentials$gsRESTUSER)
+    createStyleUrl = sprintf("%s%s%s",
+                             createStyleUrl,
+                             "&gspassword=",
+                             globalGSCredentials$gsRESTPW)
+    return (getURL(createStyleUrl))
+  }
 
 
 #' find utm zone for given longitude
@@ -644,9 +689,8 @@ utils.createWMSStyle <- function(wfsurl, attrname, palettename="Reds", colorreve
 #' @export
 #'
 #' @examples
-utils.long2UTM <- function(long){
-
- (floor((long + 180)/6) %% 60) + 1
+utils.long2UTM <- function(long) {
+  (floor((long + 180) / 6) %% 60) + 1
 
 }
 
@@ -659,14 +703,12 @@ utils.long2UTM <- function(long){
 #' @export
 #'
 #' @examples
-utils.df2jsonlist <- function(df){
-
+utils.df2jsonlist <- function(df) {
   result = list()
-  for (i in 1:nrow(df)){
+  for (i in 1:nrow(df)) {
     rowlist = list()
-    for (attrname in colnames(df)){
-
-      if(is.factor(df[i, attrname])){
+    for (attrname in colnames(df)) {
+      if (is.factor(df[i, attrname])) {
         rowlist[attrname] <- as.character(df[i, attrname])
       }
       else{
@@ -686,17 +728,15 @@ utils.df2jsonlist <- function(df){
 #' @export
 #'
 #' @examples
-utils.getLayerNameFromWFSUrl <-function(wfsurl){
-
+utils.getLayerNameFromWFSUrl <- function(wfsurl) {
   result = ""
   components <- strsplit(wfsurl, "&")[[1]]
 
-  for (i in 1:length(components)){
-    if(startsWith(components[i], "typeName")){
-
-        result=strsplit(components[i], "=")[[1]][2]
-        break
-      }
+  for (i in 1:length(components)) {
+    if (startsWith(components[i], "typeName")) {
+      result = strsplit(components[i], "=")[[1]][2]
+      break
+    }
   }
 
   return(result)
@@ -712,9 +752,9 @@ utils.getLayerNameFromWFSUrl <-function(wfsurl){
 #' @export
 #'
 #' @examples
-utils.getBbox <-function (spobj){
-  return(list(spobj@bbox[1,1],spobj@bbox[2,1],spobj@bbox[1,2],spobj@bbox[2,2]))
-  }
+utils.getBbox <- function (spobj) {
+  return(list(spobj@bbox[1, 1], spobj@bbox[2, 1], spobj@bbox[1, 2], spobj@bbox[2, 2]))
+}
 
 
 #' reproject(transform) a sp object to a proper utm crs
@@ -725,29 +765,29 @@ utils.getBbox <-function (spobj){
 #' @export
 #'
 #' @examples
-utils.project2UTM <-function (spobj){
-
+utils.project2UTM <- function(spobj) {
   # get bbox of sp
-  bbox = utils.getBbox(spobj)
+  bbox <- utils.getBbox(spobj)
 
   # find the centre x and y
-  centreX = (bbox[[1]]+bbox[[3]]) / 2.0
-  centreY = (bbox[[2]]+bbox[[4]]) / 2.0
+  centreX <- (bbox[[1]] + bbox[[3]]) / 2.0
+  centreY <- (bbox[[2]] + bbox[[4]]) / 2.0
 
   # determie the utm zone number by centre y
-  utmzone = utils.long2UTM(centreX)
+  utmzone <- utils.long2UTM(centreX)
 
   # construct a valid proj4string_utm
-  proj4string_utm = ""
-  if(centreY>0) # in the Northern Hemisphere
-  {
-    proj4string_utm=sprintf(proj4string_utm_template,utmzone,"")
-  }else
-  {
-    proj4string_utm=sprintf(proj4string_utm_template,utmzone,"+south ")
+  proj4string_utm <- ""
+  if (centreY > 0) {
+    # in the Northern Hemisphere
+    proj4string_utm <-
+      sprintf(proj4string_utm_template, utmzone, "")
+  } else {
+    proj4string_utm <-
+      sprintf(proj4string_utm_template, utmzone, "+south ")
   }
 
-  return(spTransform(spobj,CRS(proj4string_utm)))
+  return(spTransform(spobj, CRS(proj4string_utm)))
 }
 
 #' reproject(transform) a sp object to a WGS84 (EPSG:4326)
@@ -758,7 +798,6 @@ utils.project2UTM <-function (spobj){
 #' @export
 #'
 #' @examples
-utils.project2WGS84 <-function (spobj){
-
-  return(spTransform(spobj,CRS(proj4string_epsg4326)))
+utils.project2WGS84 <- function (spobj) {
+  return(spTransform(spobj, CRS(proj4string_epsg4326)))
 }
