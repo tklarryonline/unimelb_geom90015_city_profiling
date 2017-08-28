@@ -73,7 +73,7 @@ MelbourneEmployments <- setRefClass(
       # Now only select the relevant columns
       df <- df[c(
         "gcc_code11", "ste_code11", "sa2_code11", "sa2_main11", "sa2_code",
-        "total_labour", "unemploy_ratio", "job_avail_ratio", "fm_employees_ratio"
+        "total_labour", "total_employees", "unemploy_ratio", "job_avail_ratio", "fm_employees_ratio"
       )]
 
       data <<- df
