@@ -4,6 +4,8 @@
 # UniMelb email: l.nguyen50@student.unimelb.edu.au
 # ==========================================================================
 
+library(dplyr)
+library(rgeos)
 library(stats4)
 
 
@@ -21,10 +23,16 @@ VictoriaGreenAreas <- setRefClass(
   ),
   methods = list(
     load_data = function() {
-      shp <<- utils.loadGeoJSON2SP(url = url)
-    },
-    get_utm_data = function() {
-      utils.project2UTM(shp)
+      # Loads data from GeoServer
+      shp_df <- utils.loadGeoJSON2SP(url = url)
+
+      # Converts this data into metre
+      shp_df <- utils.project2UTM(shp_df)
+
+      # Calculates the area of the green areas in square metres
+      shp_df@data$grarea_sqm <- gArea(shp_df, byid = TRUE)
+
+      shp <<- shp_df
     }
   )
 )

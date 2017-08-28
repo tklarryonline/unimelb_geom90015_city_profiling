@@ -4,102 +4,83 @@
 # Source manage.R to setup
 source("./manage.R")
 
-vic.boundary.read_data <- function() {
-  url <- "http://115.146.93.46:8080/geoserver/Geographic_Boundaries/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=Geographic_Boundaries:vic_sa2_2011_aust&outputFormat=JSON&cql_filter=gcc_code11=%272GMEL%27"
-  boundary <- utils.loadGeoJSON2SP(url)
+source(file.path("data_handlers", "boundary.R"))
+source(file.path("data_handlers", "green_area.R"))
+source(file.path("data_handlers", "population.R"))
 
-  # Reprojects to UTM for metrics purposes
-  boundary <- utils.project2UTM(boundary)
+library(sp)
+
+calculate_profiller <- function() {
+  # Reads boundary data
+  boundary <- MelbourneBoundary$new()
+  boundary$load_data()
+
+  # Converts boundary to UTM
+  boundary <- boundary$get_utm_data()
+
+  # Reads green area data
+  green_area <- VictoriaGreenAreas$new()
+  green_area$load_data()
+  green_area <- green_area$shp
+
+  # Assigns unique IDs to the boundary and green area
+  boundary@data$id_bound <- as.numeric(1:nrow(boundary@data))
+  green_area@data$id_green <- as.numeric(1:nrow(green_area@data))
+
+  # Make a temp data containing boundaries on top of green areas
+  green_bound <- sp::over(green_area, boundary)
+
+  # Since the order stays, each row can be assign the ID like above
+  green_bound$id_green <- as.numeric(1:nrow(green_bound))
+
+  # Now, joins each green area to its location
+  green_bound <- dplyr::left_join(green_area@data, green_bound, by = c("id_green" = "id_green"))
+
+  # And removes the ones without boundary ID (outside of Melbourne)
+  green_bound <- green_bound[!is.na(green_bound$id_bound),]
+
+  # Sum the area by boundary ID
+  green_bound_sum <- green_bound %>%
+    group_by(id_bound) %>%
+    summarise(grarea_sqm = sum(grarea_sqm)) %>%
+    arrange(id_bound)
+
+  # Joins back to the boundary data to have the green area calculated
+  boundary@data <- dplyr::left_join(x = boundary@data, y = green_bound_sum, by = c("id_bound" = "id_bound"))
+
+  # Now, reads population data
+  population <- MelbournePopulation$new()
+  population$load_data()
+  population <- population$data
+
+  # Joins boundary with population to have the total population
+  boundary@data <- dplyr::left_join(x = boundary@data, y = population, by = c("sa2_main11"))
+
+  # Calculates the green area per capita ratio
+  boundary@data$grecapita <- boundary@data$grarea_sqm / boundary@data$total_pop
+
+  # Removes unneeded columns
+  boundary@data <- boundary@data[c(
+    "sa2_main11", "sa2_code11", "sa2_name11", "sa3_code11", "sa3_name11",
+    "sa4_code11", "sa4_name11", "grarea_sqm", "total_pop", "grecapita"
+  )]
 
   return(boundary)
 }
 
-vic.green_areas.read_data <- function() {
-  #' Read data from WFS GeoJSON link
-  #' do some basic cleanings
-  #' and return the data
+run_profiler <- function() {
+  shp <- calculate_profiller()
 
-  url <- "http://115.146.94.88:8080/geoserver/Group8/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=Group8:Greenspaces%20VIC&outputFormat=Json"
-
-  # Get the green spaces
-  green_spaces <- utils.loadGeoJSON2SP(url)
-
-  # Reprojects to UTM for metrics purposes
-  green_spaces <- utils.project2UTM(green_spaces)
-
-  return(green_spaces)
-}
-
-vic.population.read_data <- function() {
-  url <- "http://115.146.92.210:8080/geoserver/group5_Brisbane/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=group5_Brisbane:vic_population_by_age_aus_sa2_2011_ste_gccsa_info&outputFormat=JSON&cql_filter=gcc_code11=%272GMEL%27"
-
-  # Get the population data
-  vic.boundary_shp <- vic.boundary.read_data()
-  population <- utils.loadGeoJSON2DF(url)
-
-  # Merge with boundary data
-  temp_boundary_data <- merge.data.frame(
-    x = vic.boundary_shp@data, y = population,
-    by = "sa2_main11", sort = FALSE, all.x = TRUE
+  # Exports to shapefile
+  shapefile_name <- "Melb_Green_Area_per_Capita"
+  shapefile_path <- file.path(EXPORTS_DIR, shapefile_name)
+  rgdal::writeOGR(
+    obj = shp, dsn = shapefile_path,
+    layer = shapefile_name, driver = "ESRI Shapefile",
+    overwrite_layer = TRUE
   )
-  vic.boundary_shp@data <- temp_boundary_data
 
-  return(vic.boundary_shp)
+  utils.upload_shp_to_geoserver(shapefile_name = shapefile_name, shapefile_path = shapefile_path)
 }
 
-# green area index calculation base is for every 100,000 people
-pop_basenum = 100000
-
-vic.population <- vic.population.read_data()
-vic.green_spaces <- vic.green_areas.read_data()
-
-vic.population@data[, "gaarea"] = 0.0
-vic.population@data[, "idxval"] = 0.0
-
-result <- foreach(
-  i = 1:nrow(vic.population),
-  .combine = rbind,
-  .export = c("SpatialPolygons", "over", "gIntersection", "gArea")
-) %dopar% {
-  # get the geometry polgyon of population, return 0 for gaarea and idxval if geometry is NULL
-  if (is.null(vic.population@polygons[i])) {
-    out = c(0, 0)
-  } else {
-    geom_pop = SpatialPolygons(vic.population@polygons[i], proj4string = vic.population@proj4string)
-
-    # accumulate the total size of intersected greenarea for the current population geometry
-    intersectedGreenArea = 0.0
-
-    # this 'over' method is much faster to find all intersected green area polygons of current pop polygon
-    # temporarily save all intersected greenarea into a sub spatialdataframe
-    intersectedGADF = vic.green_spaces[!is.na(over(vic.green_spaces, vic.population[i, ]))[, 1], ]
-
-    # if intersected with one or more greenarea polygon, calculate and accumulate the intersected area for each population meshblock
-    if (nrow(intersectedGADF) > 0) {
-      for (j in nrow(intersectedGADF):1) {
-        geom_greenarea = SpatialPolygons(intersectedGADF@polygons[j], proj4string =
-                                           intersectedGADF@proj4string)
-
-        # do the actual intersction process
-        intsectedGeom = gIntersection(geom_pop, geom_greenarea)
-        # accumulate the size of intersected greenarea
-        intersectedGreenArea = intersectedGreenArea + gArea(intsectedGeom)
-
-      }
-    }
-
-    # check population attribute, make sure it is valid
-    population = vic.population@data[i, "total"]
-
-    if (is.null(population) || is.na(population))
-      population = 0
-
-    # for those polygons with 0 population, assign idxval = 0
-    idx_val = 0
-    if (population > 0) {
-      idx_val = intersectedGreenArea / (population / (pop_basenum * 1.0))
-    }
-
-    out = c(intersectedGreenArea, idx_val)
-  }
-}
+run_profiler()
