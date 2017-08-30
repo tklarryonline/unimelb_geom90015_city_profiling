@@ -59,12 +59,6 @@ calculate_profiller <- function() {
   # Calculates the green area per capita ratio
   boundary@data$grecapita <- boundary@data$grarea_sqm / boundary@data$total_pop
 
-  # Removes unneeded columns
-  boundary@data <- boundary@data[c(
-    "sa2_main11", "sa2_code11", "sa2_name11", "sa3_code11", "sa3_name11",
-    "sa4_code11", "sa4_name11", "grarea_sqm", "total_pop", "grecapita"
-  )]
-
   return(boundary)
 }
 
